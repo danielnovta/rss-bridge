@@ -12,10 +12,19 @@
 ; timezone = "UTC" (default)
 timezone = "UTC"
 
+; Display a system message to users.
+message = ""
+
+[http]
+timeout = 60
+useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0"
+
+; Max http response size in MB
+max_filesize = 20
+
 [cache]
 
-; Defines the cache type used by RSS-Bridge
-; "file" = FileCache (default)
+; Cache type: file, sqlite, memcached, null
 type = "file"
 
 ; Allow users to specify custom timeout for specific requests.
@@ -28,6 +37,9 @@ custom_timeout = false
 ; This address is displayed on the main page, visible to everyone!
 ; ""    = Disabled (default)
 email = ""
+
+; Advertise a contact Telegram url e.g. "https://t.me/elegantobjects"
+telegram = ""
 
 ; Show Donation information for bridges if available.
 ; This will display a 'Donate' link on the bridge view
@@ -53,7 +65,7 @@ by_bridge = false
 
 [authentication]
 
-; Enables authentication for all requests to this RSS-Bridge instance.
+; Enables basic authentication for all requests to this RSS-Bridge instance.
 ;
 ; Warning: You'll have to upgrade existing feeds after enabling this option!
 ;
@@ -61,12 +73,13 @@ by_bridge = false
 ; false = disabled (default)
 enable = false
 
-; The username for authentication. Insert this name when prompted for login.
-username = ""
+username = "admin"
 
-; The password for authentication. Insert this password when prompted for login.
-; Use a strong password to prevent others from guessing your login!
+; The password cannot be the empty string if authentication is enabled.
 password = ""
+
+; This will be used only for actions that require privileged access
+access_token = ""
 
 [error]
 
@@ -82,9 +95,26 @@ report_limit = 1
 
 ; --- Cache specific configuration ---------------------------------------------
 
+[FileCache]
+; The root folder to store files in.
+; "" = Use the cache folder in the repository (default)
+path = ""
+; Whether to actually delete files when purging. Can be useful to turn off to increase performance.
+enable_purge = true
+
 [SQLiteCache]
 file = "cache.sqlite"
 
 [MemcachedCache]
 host = "localhost"
 port = 11211
+
+; --- Bridge specific configuration ------
+
+[DiscogsBridge]
+
+; Sets the personal access token for interactions with Discogs. When
+; provided, images can be included in generated feeds.
+;
+; "" = no token used (default)
+personal_access_token = ""

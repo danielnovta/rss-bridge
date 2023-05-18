@@ -1,346 +1,314 @@
 <?php
-class CodebergBridge extends BridgeAbstract {
-	const NAME = 'Codeberg Bridge';
-	const URI = 'https://codeberg.org/';
-	const DESCRIPTION = 'Returns commits, issues, pull requests or releases for a repository.';
-	const MAINTAINER = 'VerifiedJoseph';
-	const PARAMETERS = array(
-		'Commits' => array(
-			'branch' => array(
-				'name' => 'branch',
-				'type' => 'text',
-				'exampleValue' => 'main',
-				'required' => false,
-				'title' => 'Optional, main branch is used by default.',
-			),
-		),
-		'Issues' => array(),
-		'Issue Comments' => array(
-			'issueId' => array(
-				'name' => 'Issue ID',
-				'type' => 'text',
-				'required' => true,
-				'exampleValue' => '513',
-			)
-		),
-		'Pull Requests' => array(),
-		'Releases' => array(),
-		'global' => array(
-			'username' => array(
-				'name' => 'Username',
-				'type' => 'text',
-				'exampleValue' => 'Codeberg',
-				'title' => 'Username of account that the repository belongs to.',
-				'required' => true,
-			),
-			'repo' => array(
-				'name' => 'Repository',
-				'type' => 'text',
-				'exampleValue' => 'Community',
-				'required' => true,
-			)
-		)
-	);
 
-	const CACHE_TIMEOUT = 1800;
+class CodebergBridge extends BridgeAbstract
+{
+    const NAME = 'Codeberg Bridge';
+    const URI = 'https://codeberg.org/';
+    const DESCRIPTION = 'Returns commits, issues, pull requests or releases for a repository.';
+    const MAINTAINER = 'VerifiedJoseph';
+    const PARAMETERS = [
+        'Commits' => [
+            'branch' => [
+                'name' => 'branch',
+                'type' => 'text',
+                'exampleValue' => 'main',
+                'required' => false,
+                'title' => 'Optional, main branch is used by default.',
+            ],
+        ],
+        'Issues' => [],
+        'Issue Comments' => [
+            'issueId' => [
+                'name' => 'Issue ID',
+                'type' => 'text',
+                'required' => true,
+                'exampleValue' => '513',
+            ]
+        ],
+        'Pull Requests' => [],
+        'Releases' => [],
+        'Tags' => [],
+        'global' => [
+            'username' => [
+                'name' => 'Username',
+                'type' => 'text',
+                'exampleValue' => 'Codeberg',
+                'title' => 'Username of account that the repository belongs to.',
+                'required' => true,
+            ],
+            'repo' => [
+                'name' => 'Repository',
+                'type' => 'text',
+                'exampleValue' => 'Community',
+                'required' => true,
+            ]
+        ]
+    ];
 
-	const TEST_DETECT_PARAMETERS = array(
-		'https://codeberg.org/Codeberg/Community/issues/507' => array(
-			'context' => 'Issue Comments', 'username' => 'Codeberg', 'repo' => 'Community', 'issueId' => '507'
-		),
-		'https://codeberg.org/Codeberg/Community/issues' => array(
-			'context' => 'Issues', 'username' => 'Codeberg', 'repo' => 'Community'
-		),
-		'https://codeberg.org/Codeberg/Community/pulls' => array(
-			'context' => 'Pull Requests', 'username' => 'Codeberg', 'repo' => 'Community'
-		),
-		'https://codeberg.org/Codeberg/Community/releases' => array(
-			'context' => 'Releases', 'username' => 'Codeberg', 'repo' => 'Community'
-		),
-		'https://codeberg.org/Codeberg/Community/commits/branch/master' => array(
-			'context' => 'Commits', 'username' => 'Codeberg', 'repo' => 'Community', 'branch' => 'master'
-		),
-		'https://codeberg.org/Codeberg/Community/commits' => array(
-			'context' => 'Commits', 'username' => 'Codeberg', 'repo' => 'Community'
-		)
-	);
+    const CACHE_TIMEOUT = 1800;
 
-	private $defaultBranch = 'main';
-	private $issueTitle = '';
+    const TEST_DETECT_PARAMETERS = [
+        'https://codeberg.org/Codeberg/Community/issues/507' => [
+            'context' => 'Issue Comments', 'username' => 'Codeberg', 'repo' => 'Community', 'issueId' => '507'
+        ],
+        'https://codeberg.org/Codeberg/Community/issues' => [
+            'context' => 'Issues', 'username' => 'Codeberg', 'repo' => 'Community'
+        ],
+        'https://codeberg.org/Codeberg/Community/pulls' => [
+            'context' => 'Pull Requests', 'username' => 'Codeberg', 'repo' => 'Community'
+        ],
+        'https://codeberg.org/Codeberg/Community/releases' => [
+            'context' => 'Releases', 'username' => 'Codeberg', 'repo' => 'Community'
+        ],
+        'https://codeberg.org/Codeberg/Community/commits/branch/master' => [
+            'context' => 'Commits', 'username' => 'Codeberg', 'repo' => 'Community', 'branch' => 'master'
+        ],
+        'https://codeberg.org/Codeberg/Community/commits' => [
+            'context' => 'Commits', 'username' => 'Codeberg', 'repo' => 'Community'
+        ]
+    ];
 
-	private $urlRegex = '/codeberg\.org\/([\w]+)\/([\w]+)(?:\/commits\/branch\/([\w]+))?/';
-	private $issuesUrlRegex = '/codeberg\.org\/([\w]+)\/([\w]+)\/issues/';
-	private $pullsUrlRegex = '/codeberg\.org\/([\w]+)\/([\w]+)\/pulls/';
-	private $releasesUrlRegex = '/codeberg\.org\/([\w]+)\/([\w]+)\/releases/';
-	private $issueCommentsUrlRegex = '/codeberg\.org\/([\w]+)\/([\w]+)\/issues\/([0-9]+)/';
+    private $defaultBranch = 'main';
+    private $issueTitle = '';
 
-	public function detectParameters($url) {
-		$params = array();
+    private $urlRegex = '/codeberg\.org\/([\w]+)\/([\w]+)(?:\/commits\/branch\/([\w]+))?/';
+    private $issuesUrlRegex = '/codeberg\.org\/([\w]+)\/([\w]+)\/issues/';
+    private $pullsUrlRegex = '/codeberg\.org\/([\w]+)\/([\w]+)\/pulls/';
+    private $releasesUrlRegex = '/codeberg\.org\/([\w]+)\/([\w]+)\/releases/';
+    private $issueCommentsUrlRegex = '/codeberg\.org\/([\w]+)\/([\w]+)\/issues\/([0-9]+)/';
 
-		// Issue Comments
-		if(preg_match($this->issueCommentsUrlRegex, $url, $matches)) {
-			$params['context'] = 'Issue Comments';
-			$params['username'] = $matches[1];
-			$params['repo'] = $matches[2];
-			$params['issueId'] = $matches[3];
+    public function collectData()
+    {
+        $html = getSimpleHTMLDOM($this->getURI());
 
-			return $params;
-		}
+        $html = defaultLinkTo($html, $this->getURI());
 
-		// Issues
-		if(preg_match($this->issuesUrlRegex, $url, $matches)) {
-			$params['context'] = 'Issues';
-			$params['username'] = $matches[1];
-			$params['repo'] = $matches[2];
+        switch ($this->queriedContext) {
+            case 'Commits':
+                $this->extractCommits($html);
+                break;
+            case 'Issues':
+                $this->extractIssues($html);
+                break;
+            case 'Issue Comments':
+                $this->extractIssueComments($html);
+                break;
+            case 'Pull Requests':
+                $this->extractPulls($html);
+                break;
+            case 'Releases':
+                $this->extractReleases($html);
+                break;
+            case 'Tags':
+                $this->extractTags($html);
+                break;
+            default:
+                throw new \Exception('Invalid context: ' . $this->queriedContext);
+        }
+    }
 
-			return $params;
-		}
+    public function getName()
+    {
+        switch ($this->queriedContext) {
+            case 'Commits':
+                if ($this->getBranch() === $this->defaultBranch) {
+                    return $this->getRepo() . ' Commits';
+                }
 
-		// Pull Requests
-		if(preg_match($this->pullsUrlRegex, $url, $matches)) {
-			$params['context'] = 'Pull Requests';
-			$params['username'] = $matches[1];
-			$params['repo'] = $matches[2];
+                return $this->getRepo() . ' Commits (' . $this->getBranch() . ' branch) - ' . self::NAME;
+            case 'Issues':
+                return $this->getRepo() . ' Issues - ' . self::NAME;
+            case 'Issue Comments':
+                return $this->issueTitle . ' - Issue Comments - ' . self::NAME;
+            case 'Pull Requests':
+                return $this->getRepo() . ' Pull Requests - ' . self::NAME;
+            case 'Releases':
+                return $this->getRepo() . ' Releases - ' . self::NAME;
+            case 'Tags':
+                return $this->getRepo() . ' Tags - ' . self::NAME;
+            default:
+                return parent::getName();
+        }
+    }
 
-			return $params;
-		}
+    public function getURI()
+    {
+        switch ($this->queriedContext) {
+            case 'Commits':
+                return self::URI . $this->getRepo() . '/commits/branch/' . $this->getBranch();
+            case 'Issues':
+                return self::URI . $this->getRepo() . '/issues/';
+            case 'Issue Comments':
+                return self::URI . $this->getRepo() . '/issues/' . $this->getInput('issueId');
+            case 'Pull Requests':
+                return self::URI . $this->getRepo() . '/pulls';
+            case 'Releases':
+                return self::URI . $this->getRepo() . '/releases';
+            case 'Tags':
+                return self::URI . $this->getRepo() . '/tags';
+            default:
+                return parent::getURI();
+        }
+    }
 
-		// Releases
-		if(preg_match($this->releasesUrlRegex, $url, $matches)) {
-			$params['context'] = 'Releases';
-			$params['username'] = $matches[1];
-			$params['repo'] = $matches[2];
+    private function getBranch()
+    {
+        if ($this->getInput('branch')) {
+            return $this->getInput('branch');
+        }
 
-			return $params;
-		}
+        return $this->defaultBranch;
+    }
 
-		// Commits
-		if(preg_match($this->urlRegex, $url, $matches)) {
-			$params['context'] = 'Commits';
-			$params['username'] = $matches[1];
-			$params['repo'] = $matches[2];
+    private function getRepo()
+    {
+        return $this->getInput('username') . '/' . $this->getInput('repo');
+    }
 
-			if (isset($matches[3])) {
-				$params['branch'] = $matches[3];
-			}
+    /**
+     * Extract commits
+     */
+    private function extractCommits($html)
+    {
+        $table = $html->find('table#commits-table', 0);
+        $tbody = $table->find('tbody.commit-list', 0);
 
-			return $params;
-		}
+        foreach ($tbody->find('tr') as $tr) {
+            $item = [];
 
-		return null;
-	}
+            $message = $tr->find('td.message', 0);
 
-	public function collectData() {
-		$html = getSimpleHTMLDOM($this->getURI());
+            $item['title'] = $message->find('span.message-wrapper', 0)->plaintext;
+            $item['uri'] = $tr->find('td.sha', 0)->find('a', 0)->href;
+            $item['author'] = $tr->find('td.author', 0)->plaintext;
+            $item['timestamp'] = $tr->find('td', 3)->find('span', 0)->title;
 
-		$html = defaultLinkTo($html, $this->getURI());
+            if ($message->find('pre.commit-body', 0)) {
+                $message->find('pre.commit-body', 0)->style = '';
 
-		switch($this->queriedContext) {
-			case 'Commits':
-				$this->extractCommits($html);
-				break;
-			case 'Issues':
-				$this->extractIssues($html);
-				break;
-			case 'Issue Comments':
-				$this->extractIssueComments($html);
-				break;
-			case 'Pull Requests':
-				$this->extractPulls($html);
-				break;
-			case 'Releases':
-				$this->extractReleases($html);
-				break;
-			default:
-				returnClientError('Invalid context: ' . $this->queriedContext);
-		}
-	}
+                $item['content'] = $message->find('pre.commit-body', 0);
+            } else {
+                $item['content'] = '<blockquote>' . $item['title'] . '</blockquote>';
+            }
 
-	public function getName() {
-		switch($this->queriedContext) {
-			case 'Commits':
-				if ($this->getBranch() === $this->defaultBranch) {
-					return $this->getRepo() . ' Commits';
-				}
+            $this->items[] = $item;
+        }
+    }
 
-				return $this->getRepo() . ' Commits (' . $this->getBranch() . ' branch) - ' . self::NAME;
-			case 'Issues':
-				return $this->getRepo() . ' Issues - ' . self::NAME;
-			case 'Issue Comments':
-				return $this->issueTitle . ' - Issue Comments - ' . self::NAME;
-			case 'Pull Requests':
-				return $this->getRepo() . ' Pull Requests - ' . self::NAME;
-			case 'Releases':
-				return $this->getRepo() . ' Releases - ' . self::NAME;
-			default:
-				return parent::getName();
-		}
-	}
+    /**
+     * Extract issues
+     */
+    private function extractIssues($html)
+    {
+        $div = $html->find('div.issue.list', 0);
 
-	public function getURI() {
-		switch($this->queriedContext) {
-			case 'Commits':
-				return self::URI . $this->getRepo() . '/commits/branch/' . $this->getBranch();
-			case 'Issues':
-				return self::URI . $this->getRepo() . '/issues/';
-			case 'Issue Comments':
-				return self::URI . $this->getRepo() . '/issues/' . $this->getInput('issueId');
-			case 'Pull Requests':
-				return self::URI . $this->getRepo() . '/pulls';
-			case 'Releases':
-				return self::URI . $this->getRepo() . '/releases';
-			default:
-				return parent::getURI();
-		}
-	}
+        foreach ($div->find('li.item') as $li) {
+            $item = [];
 
-	private function getBranch() {
-		if ($this->getInput('branch')) {
-			return $this->getInput('branch');
-		}
+            $number = trim($li->find('a.index,ml-0.mr-2', 0)->plaintext);
 
-		return $this->defaultBranch;
-	}
+            $item['title'] = $li->find('a.title', 0)->plaintext . ' (' . $number . ')';
+            $item['uri'] = $li->find('a.title', 0)->href;
+            $item['timestamp'] = $li->find('span.time-since', 0)->title;
+            $item['author'] = $li->find('div.desc', 0)->find('a', 1)->plaintext;
 
-	private function getRepo() {
-		return $this->getInput('username') . '/' . $this->getInput('repo');
-	}
+            // Fetch issue page
+            $issuePage = getSimpleHTMLDOMCached($item['uri'], 3600);
+            $issuePage = defaultLinkTo($issuePage, self::URI);
 
-	/**
-	 * Extract commits
-	 */
-	private function extractCommits($html) {
-		$table = $html->find('table#commits-table', 0);
-		$tbody = $table->find('tbody.commit-list', 0);
+            $item['content'] = $issuePage->find('div.timeline-item.comment.first', 0)->find('div.render-content.markup', 0);
 
-		foreach ($tbody->find('tr') as $tr) {
-			$item = array();
+            foreach ($li->find('a.ui.label') as $label) {
+                $item['categories'][] = $label->plaintext;
+            }
 
-			$message = $tr->find('td.message', 0);
+            $this->items[] = $item;
+        }
+    }
 
-			$item['title'] = $message->find('span.message-wrapper', 0)->plaintext;
-			$item['uri'] = $tr->find('td.sha', 0)->find('a', 0)->href;
-			$item['author'] = $tr->find('td.author', 0)->plaintext;
-			$item['timestamp'] = $tr->find('td', 3)->find('span', 0)->title;
+    /**
+     * Extract issue comments
+     */
+    private function extractIssueComments($html)
+    {
+        $this->issueTitle = $html->find('span#issue-title', 0)->plaintext
+            . ' (' . $html->find('span.index', 0)->plaintext . ')';
 
-			if ($message->find('pre.commit-body', 0)) {
-				$message->find('pre.commit-body', 0)->style = '';
+        foreach ($html->find('div.timeline-item.comment') as $div) {
+            $item = [];
 
-				$item['content'] = $message->find('pre.commit-body', 0);
-			} else {
-				$item['content'] = '<blockquote>' . $item['title'] . '</blockquote>';
-			}
+            if ($div->class === 'timeline-item comment merge box') {
+                continue;
+            }
 
-			$this->items[] = $item;
-		}
-	}
+            $item['title'] = $this->ellipsisTitle($div->find('div.render-content.markup', 0)->plaintext);
+            $item['uri'] = $div->find('span.text.grey', 0)->find('a', 1)->href;
+            $item['content'] = $div->find('div.render-content.markup', 0);
 
-	/**
-	 * Extract issues
-	 */
-	private function extractIssues($html) {
-		$div = $html->find('div.issue.list', 0);
+            if ($div->find('div.dropzone-attachments', 0)) {
+                $item['content'] .= $div->find('div.dropzone-attachments', 0);
+            }
 
-		foreach ($div->find('li.item') as $li) {
-			$item = array();
+            $item['author'] = $div->find('a.author', 0)->innertext;
+            $item['timestamp'] = $div->find('span.time-since', 0)->title;
 
-			$number = trim($li->find('a.index,ml-0.mr-2', 0)->plaintext);
+            $this->items[] = $item;
+        }
+    }
 
-			$item['title'] = $li->find('a.title', 0)->plaintext . ' (' . $number . ')';
-			$item['uri'] = $li->find('a.title', 0)->href;
-			$item['timestamp'] = $li->find('span.time-since', 0)->title;
-			$item['author'] = $li->find('div.desc', 0)->find('a', 1)->plaintext;
+    /**
+     * Extract pulls
+     */
+    private function extractPulls($html)
+    {
+        $div = $html->find('div.issue.list', 0);
 
-			// Fetch issue page
-			$issuePage = getSimpleHTMLDOMCached($item['uri'], 3600);
-			$issuePage = defaultLinkTo($issuePage, self::URI);
+        foreach ($div->find('li.item') as $li) {
+            $item = [];
 
-			$item['content'] = $issuePage->find('div.timeline-item.comment.first', 0)->find('div.render-content.markup', 0);
+            $number = trim($li->find('a.index,ml-0.mr-2', 0)->plaintext);
 
-			foreach ($li->find('a.ui.label') as $label) {
-				$item['categories'][] = $label->plaintext;
-			}
+            $item['title'] = $li->find('a.title', 0)->plaintext . ' (' . $number . ')';
+            $item['uri'] = $li->find('a.title', 0)->href;
+            $item['timestamp'] = $li->find('span.time-since', 0)->title;
+            $item['author'] = $li->find('div.desc', 0)->find('a', 1)->plaintext;
 
-			$this->items[] = $item;
-		}
-	}
+            // Fetch pull request page
+            $pullRequestPage = getSimpleHTMLDOMCached($item['uri'], 3600);
+            $pullRequestPage = defaultLinkTo($pullRequestPage, self::URI);
 
-	/**
-	 * Extract issue comments
-	 */
-	private function extractIssueComments($html) {
-		$this->issueTitle = $html->find('span#issue-title', 0)->plaintext
-			. ' (' . $html->find('span.index', 0)->plaintext . ')';
+            $item['content'] = $pullRequestPage->find('ui.timeline', 0)->find('div.render-content.markup', 0);
 
-		foreach ($html->find('div.timeline-item.comment') as $div) {
-			$item = array();
+            foreach ($li->find('a.ui.label') as $label) {
+                $item['categories'][] = $label->plaintext;
+            }
 
-			if ($div->class === 'timeline-item comment merge box') {
-				continue;
-			}
+            $this->items[] = $item;
+        }
+    }
 
-			$item['title'] = $this->ellipsisTitle($div->find('div.render-content.markup', 0)->plaintext);
-			$item['uri'] = $div->find('span.text.grey', 0)->find('a', 1)->href;
-			$item['content'] = $div->find('div.render-content.markup', 0);
+    /**
+     * Extract releases
+     */
+    private function extractReleases($html)
+    {
+        $ul = $html->find('ul#release-list', 0);
 
-			if ($div->find('div.dropzone-attachments', 0)) {
-				$item['content'] .= $div->find('div.dropzone-attachments', 0);
-			}
+        $lis = $ul->find('li.ui.grid');
+        if ($lis === []) {
+            throw new \Exception('Found zero releases');
+        }
+        foreach ($lis as $li) {
+            $item = [];
+            $item['title'] = $li->find('h4', 0)->plaintext;
+            $item['uri'] = $li->find('h4', 0)->find('a', 0)->href;
 
-			$item['author'] = $div->find('a.author', 0)->innertext;
-			$item['timestamp'] = $div->find('span.time-since', 0)->title;
+            $tag = $this->stripSvg($li->find('span.tag', 0));
+            $commit = $this->stripSvg($li->find('span.commit', 0));
+            $downloads = $this->extractDownloads($li->find('details.download', 0));
 
-			$this->items[] = $item;
-		}
-	}
-
-	/**
-	 * Extract pulls
-	 */
-	private function extractPulls($html) {
-		$div = $html->find('div.issue.list', 0);
-
-		foreach ($div->find('li.item') as $li) {
-			$item = array();
-
-			$number = trim($li->find('a.index,ml-0.mr-2', 0)->plaintext);
-
-			$item['title'] = $li->find('a.title', 0)->plaintext . ' (' . $number . ')';
-			$item['uri'] = $li->find('a.title', 0)->href;
-			$item['timestamp'] = $li->find('span.time-since', 0)->title;
-			$item['author'] = $li->find('div.desc', 0)->find('a', 1)->plaintext;
-
-			// Fetch pull request page
-			$pullRequestPage = getSimpleHTMLDOMCached($item['uri'], 3600);
-			$pullRequestPage = defaultLinkTo($pullRequestPage, self::URI);
-
-			$item['content'] = $pullRequestPage->find('ui.timeline', 0)->find('div.render-content.markup', 0);
-
-			foreach ($li->find('a.ui.label') as $label) {
-				$item['categories'][] = $label->plaintext;
-			}
-
-			$this->items[] = $item;
-		}
-	}
-
-	/**
-	 * Extract releases
-	 */
-	private function extractReleases($html) {
-		$ul = $html->find('ul#release-list', 0);
-
-		foreach ($ul->find('li.ui.grid') as $li) {
-			$item = array();
-			$item['title'] = $li->find('h4', 0)->plaintext;
-			$item['uri'] = $li->find('h4', 0)->find('a', 0)->href;
-
-			$tag = $this->stripSvg($li->find('span.tag', 0));
-			$commit = $this->stripSvg($li->find('span.commit', 0));
-			$downloads = $this->extractDownloads($li->find('details.download', 0));
-
-			$item['content'] = $li->find('div.markup.desc', 0);
-			$item['content'] .= <<<HTML
+            $item['content'] = $li->find('div.markup.desc', 0);
+            $item['content'] .= <<<HTML
 <strong>Tag</strong>
 <p>{$tag}</p>
 <strong>Commit</strong>
@@ -348,56 +316,131 @@ class CodebergBridge extends BridgeAbstract {
 {$downloads}
 HTML;
 
-			$item['timestamp'] = $li->find('span.time', 0)->find('span', 0)->title;
-			$item['author'] = $li->find('span.author', 0)->find('a', 0)->plaintext;
+            $item['timestamp'] = $li->find('span.time', 0)->find('span', 0)->title;
+            $item['author'] = $li->find('span.author', 0)->find('a', 0)->plaintext;
 
-			$this->items[] = $item;
-		}
-	}
+            $this->items[] = $item;
+        }
+    }
 
-	/**
-	 * Extract downloads for a releases
-	 */
-	private function extractDownloads($html, $skipFirst = false) {
-		$downloads = '';
+    private function extractTags($html)
+    {
+        $tags = $html->find('td.tag');
+        if ($tags === []) {
+            throw new \Exception('Found zero tags');
+        }
+        foreach ($tags as $tag) {
+            $this->items[] = [
+                'title' => $tag->find('a', 0)->plaintext,
+                'uri' => $tag->find('a', 0)->href,
+                'content' => $tag->innertext,
+            ];
+        }
+    }
 
-		foreach ($html->find('a') as $index => $a) {
-			if ($skipFirst === true && $index === 0) {
-				continue;
-			}
+    /**
+     * Extract downloads for a releases
+     */
+    private function extractDownloads($html, $skipFirst = false)
+    {
+        $downloads = '';
 
-			$downloads .= <<<HTML
+        foreach ($html->find('a') as $index => $a) {
+            if ($skipFirst === true && $index === 0) {
+                continue;
+            }
+
+            $downloads .= <<<HTML
 <a href="{$a->herf}">{$a->plaintext}</a><br>
 HTML;
-		}
+        }
 
-		return <<<EOD
+        return <<<EOD
 <strong>Downloads</strong>
 <p>{$downloads}</p>
 EOD;
-	}
+    }
 
-	/**
-	 * Ellipsis title to first 100 characters
-	 */
-	private function ellipsisTitle($text) {
-		$length = 100;
+    /**
+     * Ellipsis title to first 100 characters
+     */
+    private function ellipsisTitle($text)
+    {
+        $length = 100;
 
-		if (strlen($text) > $length) {
-			$text = explode('<br>', wordwrap($text, $length, '<br>'));
-			return $text[0] . '...';
-		}
-		return $text;
-	}
+        if (strlen($text) > $length) {
+            $text = explode('<br>', wordwrap($text, $length, '<br>'));
+            return $text[0] . '...';
+        }
+        return $text;
+    }
 
-	/**
-	 * Strip SVG tag
-	 */
-	private function stripSvg($html) {
-		if ($html->find('svg', 0)) {
-			$html->find('svg', 0)->outertext = '';
-		}
+    /**
+     * Strip SVG tag
+     */
+    private function stripSvg($html)
+    {
+        if ($html->find('svg', 0)) {
+            $html->find('svg', 0)->outertext = '';
+        }
 
-		return $html;
-	}
+        return $html;
+    }
+
+    public function detectParameters($url)
+    {
+        $params = [];
+
+        // Issue Comments
+        if (preg_match($this->issueCommentsUrlRegex, $url, $matches)) {
+            $params['context'] = 'Issue Comments';
+            $params['username'] = $matches[1];
+            $params['repo'] = $matches[2];
+            $params['issueId'] = $matches[3];
+
+            return $params;
+        }
+
+        // Issues
+        if (preg_match($this->issuesUrlRegex, $url, $matches)) {
+            $params['context'] = 'Issues';
+            $params['username'] = $matches[1];
+            $params['repo'] = $matches[2];
+
+            return $params;
+        }
+
+        // Pull Requests
+        if (preg_match($this->pullsUrlRegex, $url, $matches)) {
+            $params['context'] = 'Pull Requests';
+            $params['username'] = $matches[1];
+            $params['repo'] = $matches[2];
+
+            return $params;
+        }
+
+        // Releases
+        if (preg_match($this->releasesUrlRegex, $url, $matches)) {
+            $params['context'] = 'Releases';
+            $params['username'] = $matches[1];
+            $params['repo'] = $matches[2];
+
+            return $params;
+        }
+
+        // Commits
+        if (preg_match($this->urlRegex, $url, $matches)) {
+            $params['context'] = 'Commits';
+            $params['username'] = $matches[1];
+            $params['repo'] = $matches[2];
+
+            if (isset($matches[3])) {
+                $params['branch'] = $matches[3];
+            }
+
+            return $params;
+        }
+
+        return null;
+    }
 }
